@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Atlas Cloud MCP Server on Railway",
   "scripts": {
-    "start": "npx supergateway --stdio \"npx -y atlascloud-mcp\" --port $PORT --host 0.0.0.0"
+    "start": "npx supergateway --stdio \"npx -y atlascloud-mcp\" --port $PORT --host 0.0.0.0 --outputTransport streamableHttp --streamableHttpPath /mcp"
   },
   "engines": {
     "node": "20.x"
