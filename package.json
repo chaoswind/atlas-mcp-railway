@@ -1,14 +1,15 @@
 {
   "name": "atlas-mcp-railway",
   "version": "1.0.0",
-  "description": "Atlas Cloud MCP Server on Railway",
+  "type": "module",
   "scripts": {
-    "start": "npx supergateway --stdio \"npx -y atlascloud-mcp\" --port $PORT --host 0.0.0.0 --outputTransport streamableHttp --streamableHttpPath /mcp"
+    "start": "node server.js"
   },
   "engines": {
     "node": "20.x"
   },
   "dependencies": {
-    "supergateway": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.13.0",
+    "atlascloud-mcp": "latest"
   }
 }
