@@ -5,6 +5,6 @@
   },
   "deploy": {
     "numReplicas": 1,
-    "startCommand": "npx supergateway --stdio \"npx -y atlascloud-mcp\" --port $PORT"
+    "startCommand": "npx supergateway --stdio \"npx -y atlascloud-mcp\" --port $PORT --host 0.0.0.0"
   }
 }
