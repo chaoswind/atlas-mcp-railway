@@ -6,6 +6,9 @@
   "scripts": {
     "start": "npx supergateway --stdio \"npx -y atlascloud-mcp\" --port $PORT"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "supergateway": "^1.0.0"
   }
