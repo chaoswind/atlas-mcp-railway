@@ -1,33 +1,40 @@
 import { spawn } from 'child_process';
 import { createServer } from 'http';
+import { createInterface } from 'readline';
 
-const MCP_PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-// 启动 atlascloud-mcp 子进程
+// 启动 atlascloud-mcp
 const mcp = spawn('npx', ['-y', 'atlascloud-mcp'], {
   stdio: ['pipe', 'pipe', 'pipe'],
   env: { ...process.env }
 });
 
 mcp.stderr.on('data', (d) => process.stderr.write(`[mcp] ${d}`));
-mcp.on('exit', (code) => console.log(`[mcp] exited with code ${code}`));
+mcp.on('exit', (code) => {
+  console.log(`[mcp] exited with code ${code}`);
+  process.exit(1);
+});
 
-// 缓冲区：收集子进程 stdout 的完整 JSON 行
-let buffer = '';
-mcp.stdout.on('data', (chunk) => {
-  buffer += chunk.toString();
-  const lines = buffer.split('\n');
-  buffer = lines.pop(); // 保留不完整的行
-  for (const line of lines) {
-    if (line.trim()) pendingResponse?.(line.trim());
+// 用 readline 逐行读取 stdout
+const rl = createInterface({ input: mcp.stdout });
+const pending = {};
+
+rl.on('line', (line) => {
+  if (!line.trim()) return;
+  try {
+    const msg = JSON.parse(line);
+    const id = msg.id;
+    if (id !== undefined && pending[id]) {
+      pending[id](msg);
+      delete pending[id];
+    }
+  } catch (e) {
+    // 忽略无法解析的行
   }
 });
 
-let pendingResponse = null;
-
-// 创建 HTTP 服务器
 const server = createServer((req, res) => {
-  // 设置 CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id');
@@ -39,13 +46,13 @@ const server = createServer((req, res) => {
   }
 
   // 健康检查
-  if (req.url === '/health') {
+  if (req.url === '/health' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok' }));
     return;
   }
 
-  // 只处理 /mcp 路径的 POST 请求
+  // 只处理 POST /mcp
   if (req.url !== '/mcp' || req.method !== 'POST') {
     res.writeHead(404);
     res.end('Not Found');
@@ -55,15 +62,43 @@ const server = createServer((req, res) => {
   let body = '';
   req.on('data', chunk => body += chunk);
   req.on('end', () => {
-    // 将请求写入子进程的 stdin
+    let requestId;
+    try {
+      requestId = JSON.parse(body).id;
+    } catch (e) {
+      requestId = null;
+    }
+    // 确保有 id
+    const id = requestId !== undefined && requestId !== null ? requestId : Date.now();
+
+    // 注册待处理响应
+    pending[id] = (response) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(response));
+    };
+
+    // 写入子进程 stdin
     mcp.stdin.write(body + '\n');
 
-    // 等待子进程的响应
-    pendingResponse = (line) => {
-      pendingResponse = null;
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(line);
-    };
+    // 30 秒超时
+    const timer = setTimeout(() => {
+      if (pending[id]) {
+        delete pending[id];
+        try {
+          res.writeHead(504, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'timeout', id }));
+        } catch (e) {
+          // 忽略：响应可能已发送
+        }
+      }
+    }, 30000);
+  });
+});
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server listening on port ${PORT}`);
+  console.log(`MCP endpoint: http://0.0.0.0:${PORT}/mcp`);
+});    };
 
     // 30 秒超时
     setTimeout(() => {
