@@ -1,10 +1,9 @@
 {
   "name": "atlas-mcp-railway",
   "version": "1.0.0",
-  "description": "Atlas Cloud MCP Server deployed on Railway",
-  "main": "index.js",
+  "description": "Atlas Cloud MCP Server on Railway",
   "scripts": {
-    "start": "npx supergateway --stdio \"npx -y atlascloud-mcp\" --port $PORT"
+    "start": "npx supergateway --stdio \"npx -y atlascloud-mcp\" --port $PORT --host 0.0.0.0"
   },
   "engines": {
     "node": "20.x"
